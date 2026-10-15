@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cctype>
+
 using namespace std;
 
 /**
@@ -26,7 +28,6 @@ struct Delivery {
     double kg;
     char   grade;
 };
-
 
 /**
  * THE DATA
@@ -72,9 +73,8 @@ vector<RawRecord> rawRecords = {
 };
 
 // Q6 — an Igisoro board. 16 pits, in sowing order.
-//      Position 0 is unused so that board[1] really is pit 1.
+//      Position 0 is unused so that board really is pit 1.
 vector<int> board = {0, 0, 0, 1, 0, 0, 4, 1, 0, 0, 2, 2, 0, 1, 5, 0, 0};
-
 
 // ---------------------------------------------------------------------
 //  A HELPER YOU MAY FIND USEFUL
@@ -84,6 +84,8 @@ void printBoard(const vector<int> &b) {
     cout << "\n";
 }
 
+int findFarmer(const vector<Delivery> &log, string name);
+double payment(double kg, char grade);
 
 int main() {
 
@@ -121,11 +123,36 @@ int main() {
     // =================================================================
 
     cout << "=== Q1 ===\n";
+    {
+        double total = 0;
+        int valid = 0;
+        double heaviestWeight = morningWeights[0];
+        int heaviestPos = 0;
+        int maxRun = 0;
+        int currentRun = 0;
 
-
-
-
-
+        for (size_t i = 0; i < morningWeights.size(); i++) {
+            double w = morningWeights[i];
+            total += w;
+            if (w > heaviestWeight) {
+                heaviestWeight = w;
+                heaviestPos = i;
+            }
+            if (w > 0 && w <= 80) {
+                valid++;
+                currentRun++;
+                if (currentRun > maxRun) {
+                    maxRun = currentRun;
+                }
+            } else {
+                currentRun = 0;
+            }
+        }
+        cout << "Total: " << total << " kg\n";
+        cout << "Valid: " << valid << " of 12\n";
+        cout << "Heaviest: " << heaviestWeight << " kg at position " << heaviestPos << "\n";
+        cout << "Longest valid run: " << maxRun << "\n";
+    }
     cout << "\n";
 
 
@@ -135,11 +162,31 @@ int main() {
     // =================================================================
 
     cout << "=== Q2 ===\n";
+    {
+        int countA = 0, countB = 0, countC = 0;
+        double totalA = 0, totalB = 0, totalC = 0;
 
+        for (const auto &d : logbook) {
+            if (d.grade == 'A') { countA++; totalA += d.kg; }
+            else if (d.grade == 'B') { countB++; totalB += d.kg; }
+            else if (d.grade == 'C') { countC++; totalC += d.kg; }
+        }
 
+        double avgA = (countA > 0) ? (totalA / countA) : 0;
+        double avgB = (countB > 0) ? (totalB / countB) : 0;
+        double avgC = (countC > 0) ? (totalC / countC) : 0;
 
+        cout << "Grade A: " << countA << " deliveries, " << totalA << " kg total, " << avgA << " kg average\n";
+        cout << "Grade B: " << countB << " deliveries, " << totalB << " kg total, " << avgB << " kg average\n";
+        cout << "Grade C: " << countC << " deliveries, " << totalC << " kg total, " << avgC << " kg average\n";
 
+        char bestGrade = 'A';
+        double bestAvg = avgA;
+        if (avgB > bestAvg) { bestAvg = avgB; bestGrade = 'B'; }
+        if (avgC > bestAvg) { bestAvg = avgC; bestGrade = 'C'; }
 
+        cout << "Best average: grade " << bestGrade << "\n";
+    }
     cout << "\n";
 
 
@@ -149,11 +196,46 @@ int main() {
     // =================================================================
 
     cout << "=== Q3 ===\n";
+    {
+        cout << "findFarmer(Isanda) = " << findFarmer(logbook, "Isanda") << "\n";
+        cout << "findFarmer(Mukamana) = " << findFarmer(logbook, "Mukamana") << "\n";
 
+        vector<string> farmers;
+        vector<int> counts;
+        vector<double> totals;
 
+        for (const auto &d : logbook) {
+            auto it = find(farmers.begin(), farmers.end(), d.farmer);
+            if (it == farmers.end()) {
+                farmers.push_back(d.farmer);
+                counts.push_back(1);
+                totals.push_back(d.kg);
+            } else {
+                size_t idx = distance(farmers.begin(), it);
+                counts[idx]++;
+                totals[idx] += d.kg;
+            }
+        }
 
+        string mostDelivName = "";
+        int maxDeliv = -1;
+        string mostKgName = "";
+        double maxKg = -1;
 
+        for (size_t i = 0; i < farmers.size(); i++) {
+            if (counts[i] > maxDeliv) {
+                maxDeliv = counts[i];
+                mostDelivName = farmers[i];
+            }
+            if (totals[i] > maxKg) {
+                maxKg = totals[i];
+                mostKgName = farmers[i];
+            }
+        }
 
+        cout << "Most deliveries: " << mostDelivName << " (" << maxDeliv << ")\n";
+        cout << "Most kg: " << mostKgName << " (" << maxKg << " kg)\n";
+    }
     cout << "\n";
 
 
@@ -163,11 +245,22 @@ int main() {
     // =================================================================
 
     cout << "=== Q4 ===\n";
-
-
-
-
-
+    {
+        double totalPaid = 0;
+        for (const auto &d : logbook) {
+            double p = payment(d.kg, d.grade);
+            bool halved = false;
+            if (totalPaid > 100000) {
+                p /= 2.0;
+                halved = true;
+            }
+            totalPaid += p;
+            cout << d.farmer << " " << d.kg << " kg grade " << d.grade << " -> " << p;
+            if (halved) cout << "  (halved)";
+            cout << "\n";
+        }
+        cout << "Total paid: " << totalPaid << "\n";
+    }
     cout << "\n";
 
 
@@ -177,23 +270,89 @@ int main() {
     // =================================================================
 
     cout << "=== Q5 ===\n";
+    {
+        int accepted = 0;
+        int rejected = 0;
 
+        for (const auto &r : rawRecords) {
+            bool valid = true;
+            string reason = "";
 
+            if (r.id.length() != 4 || r.id[0] != 'F' || !isdigit(r.id[1]) || !isdigit(r.id[2]) || !isdigit(r.id[3])) {
+                valid = false;
+                reason = "bad id";
+            }
 
+            if (valid) {
+                if (r.kg.empty()) {
+                    valid = false;
+                    reason = "weight missing";
+                } else {
+                    bool isNum = true;
+                    size_t dots = 0;
+                    for (char c : r.kg) {
+                        if (c == '.') dots++;
+                        else if (!isdigit(c)) isNum = false;
+                    }
+                                    if (!isNum || dots > 1) {
+                    valid = false;
+                    reason = "weight not a number";
+                } else {
+                    double weight = stod(r.kg);
+                    if (weight <= 0 || weight > 80) {
+                        valid = false;
+                        reason = "weight out of range";
+                    }
+                }
+            }
+        }
 
+        if (valid) {
+            char g = toupper(r.grade);
+            if (g != 'A' && g != 'B' && g != 'C') {
+                valid = false;
+                reason = "unknown grade";
+            }
+        }
 
+        if (valid) {
+            cout << r.id << " ACCEPT\n";
+            accepted++;
+        } else {
+            cout << r.id << " REJECT - " << reason << "\n";
+            rejected++;
+        }
+    }
+    cout << accepted << " accepted, " << rejected << " rejected\n";
+    
     cout << "\n";
 
     // =================================================================
     //  Q6  ·  IGISORO: A FULL TURN          (see README)
     //  Uses: board
     // =================================================================
-
     cout << "=== Q6 ===\n";
-
-
-
     
+        int current = 6;
+        int hand = board[current];
+        board[current] = 0;
+        int totalPits = 0;
+        while (hand > 0) {
+            current = (current % 16) + 1;
+            totalPits++;
+            board[current]++;
+            hand--;
+            if (hand == 0 && board[current] > 1) {
+                hand = board[current];
+                board[current] = 0;
+            }
+        }
+        int laps = (totalPits + 15) / 16;
+        cout << "Final board: ";
+        printBoard(board);
+        cout << "Landed in pit " << current << " after " << laps << " laps\n";
+    
+
     // =================================================================
     //  STRETCH  ·  optional
     // =================================================================
@@ -202,28 +361,17 @@ int main() {
     //  Q7  ·  SORT THE LOGBOOK              (see README)
     //  Uses: logbook
     // =================================================================
-
     // cout << "=== Q7 ===\n";
-
-
-
-
 
     // =================================================================
     //  Q8  ·  SPOTTING DOUBLE-ENTRIES       (see README)
     //  Uses: logbook
     // =================================================================
-
     // cout << "=== Q8 ===\n";
-
-
-
-
 
     return 0;
 }
-
-
+}
 // =====================================================================
 //  FUNCTIONS YOU WRITE
 //
@@ -236,15 +384,22 @@ int main() {
 // Q3:  return the position of the first delivery by this farmer,
 //      or -1 if the farmer is not in the log at all.
 //
-// int findFarmer(const vector<Delivery> &log, string name) {
-//
-// }
+int findFarmer(const vector<Delivery> &log, string name) {
+    for (size_t i = 0; i < log.size(); i++) {
+        if (log[i].farmer == name) return i;
+    }
+    return -1;
+}
 
 
 // Q4:  what one delivery earns, before any cap is applied.
 //      Grade A pays 10% above the rate, B pays the rate,
 //      anything else pays 20% below it. The rate is 450.
 //
-// double payment(double kg, char grade) {
-//
-// }
+double payment(double kg, char grade) {
+    double rate = 450.0;
+    if (grade == 'A') return kg * rate * 1.10;
+    if (grade == 'B') return kg * rate;
+    return kg * rate * 0.80;
+}
+
